@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis finanzas</title>
+<style>
+:root{--bg:#f2f5f4;--card:#fff;--ink:#16302b;--mute:#6b7f7a;--line:#dbe4e1;--acc:#0f766e;--on:#fff;--bad:#c2410c;--good:#15803d;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a18;--card:#162623;--ink:#e6f0ed;--mute:#8fa6a0;--line:#26403b;--acc:#2dd4bf;--on:#06201c;--bad:#fb923c;--good:#4ade80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1a18;--card:#162623;--ink:#e6f0ed;--mute:#8fa6a0;--line:#26403b;--acc:#2dd4bf;--on:#06201c;--bad:#fb923c;--good:#4ade80;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:520px;margin:0 auto;padding:16px}
+h2{font-size:14px;font-weight:600;color:var(--mute);margin:0 0 10px}
+.saldo{font-size:46px;font-weight:700;letter-spacing:-1px;margin:0}
+.sub{color:var(--mute);font-size:14px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.row{display:flex;gap:8px;margin-bottom:8px}
+input,select,button{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+input,select{flex:1}
+button{cursor:pointer}
+.pri{background:var(--acc);color:var(--on);border:0;font-weight:600}
+.seg{display:flex;gap:6px;margin-bottom:10px}
+.seg button{flex:1;font-weight:600}
+.seg button.on{background:var(--acc);color:var(--on);border-color:var(--acc)}
+.month{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.month button{padding:6px 12px}
+.month strong{text-transform:capitalize}
+.res{display:flex;gap:10px;margin-bottom:6px}
+.res div{flex:1;font-size:14px;color:var(--mute)}
+.res b{display:block;font-size:18px}
+.in{color:var(--good)}.out{color:var(--bad)}
+.prog{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:8px 0 4px}
+.prog i{display:block;height:100%;background:var(--acc)}
+.prog.over i{background:var(--bad)}
+.bar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.bar span:first-child{width:90px}
+.bar .t{flex:1}
+.bar i{display:block;height:8px;background:var(--acc);border-radius:4px}
+.item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item small{display:block;color:var(--mute)}
+.item b{white-space:nowrap}
+.item button{background:none;border:0;color:var(--mute);padding:4px 8px;font-size:18px}
+.empty{color:var(--mute);text-align:center;padding:12px}
+.danger{width:100%;color:var(--bad)}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h2>Saldo actual</h2>
+    <p class="saldo" id="saldo">0,00 €</p>
+    <div class="sub">Ingresos suman, gastos restan</div>
+  </div>
+
+  <div class="card">
+    <div class="seg"><button id="tg" class="on">Gasto</button><button id="ti">Ingreso</button></div>
+    <div class="row">
+      <input id="concepto" placeholder="Concepto" autocomplete="off">
+      <input id="importe" type="number" inputmode="decimal" step="0.01" placeholder="€" style="max-width:100px">
+    </div>
+    <div class="row">
+      <select id="cat"></select>
+      <input id="fecha" type="date" style="max-width:150px">
+    </div>
+    <button class="pri" id="add" style="width:100%">Añadir gasto</button>
+  </div>
+
+  <div class="card">
+    <h2>Ajustar saldo</h2>
+    <div class="row">
+      <input id="real" type="number" inputmode="decimal" step="0.01" placeholder="Saldo real de tu banco">
+      <button class="pri" id="fijar">Fijar saldo</button>
+    </div>
+    <div class="sub" style="margin:0">Pon lo que tienes de verdad y la app añade la diferencia.</div>
+  </div>
+
+  <div class="month">
+    <button id="prev" aria-label="Mes anterior">‹</button><strong id="mes"></strong><button id="next" aria-label="Mes siguiente">›</button>
+  </div>
+
+  <div class="card">
+    <div class="res"><div>Ingresos<b class="in" id="ing">0 €</b></div><div>Gastos<b class="out" id="gas">0 €</b></div></div>
+    <div class="row" style="margin-top:10px">
+      <input id="lim" type="number" inputmode="decimal" placeholder="Límite de gasto mensual">
+      <button id="setlim">Guardar</button>
+    </div>
+    <div id="presu"></div>
+  </div>
+
+  <div class="card" id="cats"></div>
+  <div class="card" id="lista"></div>
+  <button class="danger" id="borrar">Borrar todos los datos</button>
+</main>
+<script>
+const CG=["Comida","Transporte","Ocio","Compras","Casa","Otros"];
+const CI=["Nómina","Paga","Bizum","Otros"];
+const KEYS={Comida:["mercadona","carrefour","lidl","dia","aldi","restaurante","cafe","café","mcdonald","burger","glovo"],Transporte:["gasolin","repsol","cepsa","renfe","uber","cabify","bus","taxi","metro"],Ocio:["netflix","spotify","cine","steam","playstation","hbo","disney"],Compras:["amazon","zara","pull","bershka","ikea","apple","aliexpress","decathlon"],Casa:["luz","agua","alquiler","iberdrola","endesa"]};
+let movs=[],tipo="gasto",ver=new Date(),limite=0,sure=false;
+const $=id=>document.getElementById(id);
+const eur=n=>n.toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+const hoy=()=>new Date().toISOString().slice(0,10);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const val=m=>m.tipo==="gasto"?-m.importe:m.importe;
+
+function cargar(){
+  try{movs=JSON.parse(localStorage.getItem("gastos")||"[]").map(m=>({...m,tipo:m.tipo||"gasto"}))}catch(e){movs=[]}
+  try{limite=parseFloat(localStorage.getItem("limite")||"0")||0}catch(e){limite=0}
+}
+function guardar(){try{localStorage.setItem("gastos",JSON.stringify(movs));localStorage.setItem("limite",String(limite))}catch(e){}}
+function adivinar(c){const s=(c||"").toLowerCase();for(const k in KEYS)if(KEYS[k].some(w=>s.includes(w)))return k;return "Otros"}
+function num(x){return parseFloat(String(x).replace(",","."))}
+
+function add(t,concepto,importe,cat,fecha){
+  importe=num(importe);
+  if(!importe||(t!=="ajuste"&&importe<=0))return false;
+  movs.push({id:Date.now()+Math.random(),tipo:t,comercio:concepto||(t==="ingreso"?"Ingreso":"Sin nombre"),importe,cat:cat||(t==="gasto"?adivinar(concepto):"Otros"),fecha:fecha||hoy()});
+  guardar();return true;
+}
+function setTipo(t){
+  tipo=t;$("tg").classList.toggle("on",t==="gasto");$("ti").classList.toggle("on",t==="ingreso");
+  $("add").textContent=t==="gasto"?"Añadir gasto":"Añadir ingreso";
+  $("cat").innerHTML=t==="gasto"?'<option value="">Categoría automática</option>'+CG.map(c=>`<option>${c}</option>`).join(""):CI.map(c=>`<option>${c}</option>`).join("");
+}
+
+function pintar(){
+  const total=movs.reduce((s,m)=>s+val(m),0);
+  $("saldo").textContent=eur(total);
+  $("saldo").className="saldo "+(total<0?"out":"");
+  const y=ver.getFullYear(),mo=ver.getMonth();
+  $("mes").textContent=ver.toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  const del=movs.filter(m=>{const d=new Date(m.fecha);return d.getFullYear()===y&&d.getMonth()===mo}).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const ing=del.filter(m=>m.tipo==="ingreso").reduce((s,m)=>s+m.importe,0);
+  const gas=del.filter(m=>m.tipo==="gasto").reduce((s,m)=>s+m.importe,0);
+  $("ing").textContent=eur(ing);$("gas").textContent=eur(gas);
+  $("presu").innerHTML=limite>0?`<div class="prog ${gas>limite?"over":""}"><i style="width:${Math.min(gas/limite*100,100)}%"></i></div><div class="sub" style="margin:0">${gas>limite?"Te has pasado "+eur(gas-limite):"Te quedan "+eur(limite-gas)} de ${eur(limite)}</div>`:"";
+  const por={};del.filter(m=>m.tipo==="gasto").forEach(m=>por[m.cat]=(por[m.cat]||0)+m.importe);
+  const max=Math.max(...Object.values(por),1);
+  $("cats").innerHTML=Object.keys(por).length?"<h2>Gastos por categoría</h2>"+Object.entries(por).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="bar"><span>${c}</span><span class="t"><i style="width:${v/max*100}%"></i></span><span>${eur(v)}</span></div>`).join(""):'<div class="empty">Sin gastos este mes</div>';
+  $("lista").innerHTML=del.length?"<h2>Movimientos</h2>"+del.map(m=>{const v=val(m);return `<div class="item"><div>${esc(m.comercio)}<small>${new Date(m.fecha).toLocaleDateString("es-ES",{day:"numeric",month:"short"})} · ${m.tipo==="ajuste"?"Ajuste":m.cat}</small></div><div><b class="${v<0?"out":"in"}">${v<0?"−":"+"}${eur(Math.abs(v))}</b><button data-id="${m.id}" aria-label="Borrar">×</button></div></div>`}).join(""):'<div class="empty">No hay movimientos este mes</div>';
+  $("borrar").textContent=sure?"¿Seguro? Pulsa otra vez para borrar todo":"Borrar todos los datos";
+}
+
+$("tg").onclick=()=>setTipo("gasto");
+$("ti").onclick=()=>setTipo("ingreso");
+$("add").onclick=()=>{if(add(tipo,$("concepto").value.trim(),$("importe").value,$("cat").value,$("fecha").value)){$("concepto").value="";$("importe").value="";ver=new Date();pintar()}};
+$("fijar").onclick=()=>{const r=num($("real").value);if(isNaN(r))return;const dif=r-movs.reduce((s,m)=>s+val(m),0);if(Math.abs(dif)>=0.005)add("ajuste","Ajuste de saldo",dif);$("real").value="";ver=new Date();pintar()};
+$("setlim").onclick=()=>{limite=num($("lim").value)||0;$("lim").value="";guardar();pintar()};
+$("lista").onclick=e=>{const id=e.target.dataset&&e.target.dataset.id;if(id){movs=movs.filter(m=>String(m.id)!==id);guardar();pintar()}};
+$("prev").onclick=()=>{ver=new Date(ver.getFullYear(),ver.getMonth()-1,1);pintar()};
+$("next").onclick=()=>{ver=new Date(ver.getFullYear(),ver.getMonth()+1,1);pintar()};
+$("borrar").onclick=()=>{if(!sure){sure=true;pintar();return}movs=[];limite=0;sure=false;guardar();pintar()};
+
+$("fecha").value=hoy();
+cargar();setTipo("gasto");
+const p=new URLSearchParams(location.search);
+if(p.get("importe")){add(p.get("tipo")==="ingreso"?"ingreso":"gasto",p.get("comercio"),p.get("importe"));history.replaceState(null,"",location.pathname)}
+pintar();
+</script>
+</body>
+</html>
